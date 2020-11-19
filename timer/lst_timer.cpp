@@ -177,23 +177,31 @@ void Utils::addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
 }
 
 //信号处理函数
+//仅通过管道发送信号值，不处理相应逻辑
 void Utils::sig_handler(int sig)
 {
     //为保证函数的可重入性，保留原来的errno
     int save_errno = errno;
     int msg = sig;
+    //将信号值从管道的写端传入，其为字符串
     send(u_pipefd[1], (char *)&msg, 1, 0);
+
+    //errno可能改变，由于上面保存了原来的errno，此处对其恢复
     errno = save_errno;
 }
 
 //设置信号函数
+//仅关注信号SIGTERM和SIGALRM
 void Utils::addsig(int sig, void(handler)(int), bool restart)
 {
     struct sigaction sa;
+    //将sa的所有字节设为'\0'
     memset(&sa, '\0', sizeof(sa));
     sa.sa_handler = handler;
     if (restart)
         sa.sa_flags |= SA_RESTART;
+        
+    //将所有信号添加到信号集中
     sigfillset(&sa.sa_mask);
     assert(sigaction(sig, &sa, NULL) != -1);
 }
